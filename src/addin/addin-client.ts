@@ -17,10 +17,10 @@ let lastTokenRequestId = 0;
 let lastModalRequestId = 0;
 
 function getQueryVariable(variable: any) {
-  let query = window.location.search.substring(1);
-  let vars = query.split('&');
-  for (let i = 0; i < vars.length; i++) {
-    let pair = vars[i].split('=');
+  const query = window.location.search.substring(1);
+  const vars = query.split('&');
+  for (const v of vars) {
+    const pair = v.split('=');
     if (decodeURIComponent(pair[0]) === variable) {
       return decodeURIComponent(pair[1]);
     }
@@ -73,10 +73,10 @@ export class AddinClient {
 
   public navigate(url: string) {
     this.postMessage({
-      messageType: 'navigate',
       message: {
-        url: url
-      }
+        url
+      },
+      messageType: 'navigate'
     });
   }
 
@@ -90,19 +90,19 @@ export class AddinClient {
       };
 
       this.postMessage({
-        messageType: 'get-token',
         message: {
           disableRedirect,
-          tokenRequestId: tokenRequestId
-        }
+          tokenRequestId
+        },
+        messageType: 'get-token'
       });
     });
   }
 
   public UIReady(args: AddinClientUIReadyArgs) {
     this.postMessage({
-      messageType: 'ui-ready',
-      message: args
+      message: args,
+      messageType: 'ui-ready'
     });
   }
 
@@ -116,19 +116,19 @@ export class AddinClient {
       };
 
       this.postMessage({
-        messageType: 'show-modal',
         message: {
-          args: args,
-          modalRequestId: modalRequestId
-        }
+          args,
+          modalRequestId
+        },
+        messageType: 'show-modal'
       });
     });
   }
 
   public closeModal(args: AddinClientCloseModalArgs) {
     this.postMessage({
-      messageType: 'close-modal',
-      message: args
+      message: args,
+      messageType: 'close-modal'
     });
   }
 
@@ -179,17 +179,17 @@ export class AddinClient {
             this.currentHeight = currentHeight;
 
             this.postMessage({
-              messageType: 'height-change',
               message: {
                 height: currentHeight + 'px'
-              }
+              },
+              messageType: 'height-change'
             });
           }
         }, 1000);
 
         this.args.callbacks.ready({
-          envId: data.message.envId,
-          context: data.message.context
+          context: data.message.context,
+          envId: data.message.envId
         });
       } else if (this.isFromValidOrigin(event)) {
         /* tslint:disable-next-line switch-default */
