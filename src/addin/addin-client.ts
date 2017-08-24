@@ -30,23 +30,6 @@ let lastAuthTokenRequestId = 0;
 let lastModalRequestId = 0;
 
 /**
- * Reads a query string value from the current window location.
- * @param variable  Name of the query string parameter to ready.
- * @returns         The value of the query string parameter.
- */
-function getQueryVariable(variable: any) {
-  const query = window.location.search.substring(1);
-  const vars = query.split('&');
-  for (const v of vars) {
-    const pair = v.split('=');
-    if (decodeURIComponent(pair[0]) === variable) {
-      return decodeURIComponent(pair[1]);
-    }
-  }
-  console.log('Query variable %s not found', variable);
-}
-
-/**
  * Client for interacting with the parent page hosting the add-in.
  */
 export class AddinClient {
@@ -75,6 +58,13 @@ export class AddinClient {
    * setInterval id for tracking height changes of the iframe.
    */
   private heightChangeIntervalId: any;
+
+  /**
+   * @returns {string}  Returns the current query string path for the window, prefixed with ?.
+   */
+  private static getQueryString() {
+    return window.location.search;
+  }
 
   constructor(private args: AddinClientArgs) {
     this.windowMessageHandler = (event) => {
@@ -131,17 +121,6 @@ export class AddinClient {
         },
         messageType: 'get-auth-token'
       });
-    });
-  }
-
-  /**
-   * Informs the add-in client that the add-in is initialized and ready to be shown.
-   * @param args Arguments describing how the add-in should render.
-   */
-  public ready(args: AddinClientReadyArgs) {
-    this.postMessageToHostPage({
-      message: args,
-      messageType: 'addin-ready'
     });
   }
 
@@ -260,7 +239,13 @@ export class AddinClient {
         // Pass key data to the add-in for it to initiailze.
         this.args.callbacks.init({
           context: data.message.context,
-          envId: data.message.envId
+          envId: data.message.envId,
+          ready: (args: AddinClientReadyArgs) => {
+            this.postMessageToHostPage({
+              message: args,
+              messageType: 'addin-ready'
+            });
+          }
         });
 
       } else if (this.isFromValidOrigin(event)) {
@@ -274,7 +259,9 @@ export class AddinClient {
             this.handleCloseModalMessage(data.message);
             break;
           case 'button-click':
-            this.args.callbacks.buttonClick();
+            if (this.args.callbacks.buttonClick) {
+              this.args.callbacks.buttonClick();
+            }
             break;
         }
       } else {
@@ -330,7 +317,7 @@ export class AddinClient {
    */
   private postMessageToHostPage(message: any, targetOrigin?: string) {
     message.source = 'bb-addin-client';
-    message.addinId = getQueryVariable('addinId');
+    message.addinId = this.getQueryVariable('addinId');
 
     targetOrigin = targetOrigin || this.trustedOrigin;
 
@@ -358,4 +345,22 @@ export class AddinClient {
       'sent or because the host origin is not a whitelisted origin.'
     );
   }
+
+  /**
+   * Reads a query string value from the current window location.
+   * @param variable  Name of the query string parameter to ready.
+   * @returns         The value of the query string parameter.
+   */
+  private getQueryVariable(variable: any) {
+    const query = AddinClient.getQueryString().substring(1);
+    const vars = query.split('&');
+    for (const v of vars) {
+      const pair = v.split('=');
+      if (decodeURIComponent(pair[0]) === variable) {
+        return decodeURIComponent(pair[1]);
+      }
+    }
+    console.log('Query variable %s not found', variable);
+  }
+
 }
