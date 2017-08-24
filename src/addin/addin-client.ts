@@ -3,9 +3,13 @@ import { AddinClientCloseModalArgs } from './client-interfaces/addin-client-clos
 import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
 import { AddinClientReadyArgs } from './client-interfaces/addin-client-ready-args';
 import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
+import { AddinClientShowModalResult } from './client-interfaces/addin-client-show-modal-result';
 import { AddinHostMessage } from './host-interfaces/addin-host-message';
 import { AddinHostMessageEventData } from './host-interfaces/addin-host-message-event-data';
 
+/**
+ * Collection of regexs for our whitelist of host origins.
+ */
 const allowedOrigins = [
   /^https\:\/\/[\w\-\.]+\.blackbaud\.com$/,
   /^https\:\/\/[\w\-\.]+\.blackbaud\-dev\.com$/,
@@ -110,9 +114,9 @@ export class AddinClient {
 
   /**
    * Requests an authentication token for the current user.
-   * Returns a promise which will resolve with the token value.
+   * @returns {Promise<any>} Returns a promise which will resolve with the token value.
    */
-  public getAuthToken() {
+  public getAuthToken(): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       const authTokenRequestId = ++lastAuthTokenRequestId;
 
@@ -147,23 +151,25 @@ export class AddinClient {
    * @returns {Promise<any>} Returns a promise that will be resolved when the modal add-in is closed.
    * Promise will resolve with context data passed by from the modal add-in's closeModal call.
    */
-  public showModal(args: AddinClientShowModalArgs) {
-    return new Promise<any>((resolve, reject) => {
-      const modalRequestId = ++lastModalRequestId;
+  public showModal(args: AddinClientShowModalArgs): AddinClientShowModalResult {
+    return {
+      modalClosed: new Promise<any>((resolve, reject) => {
+        const modalRequestId = ++lastModalRequestId;
 
-      this.modalRequests[modalRequestId] = {
-        reject,
-        resolve
-      };
+        this.modalRequests[modalRequestId] = {
+          reject,
+          resolve
+        };
 
-      this.postMessageToHostPage({
-        message: {
-          args,
-          modalRequestId
-        },
-        messageType: 'show-modal'
-      });
-    });
+        this.postMessageToHostPage({
+          message: {
+            args,
+            modalRequestId
+          },
+          messageType: 'show-modal'
+        });
+      })
+    };
   }
 
   /**
