@@ -12,10 +12,14 @@
     "test:unit:ci": "npm run test:unit:base -- config/karma/ci.karma.conf.js",
     "test:unit:base": "node --max-old-space-size=4096 node_modules/karma/bin/karma start",
     "pretest": "npm run lint",
-    "compress": "uglifyjs dist/bundles/sky-api-addin.umd.js -m -o dist/bundles/sky-api-addin.umd.min.js",
-    "build": "rimraf dist && tsc && webpack --config config/webpack/webpack.prod.config.js && npm run compress",
+    "compress": "npm run uglifyjs -- dist/bundles/sky-api-addin.umd.js -m -o dist/bundles/sky-api-addin.umd.min.js",
+    "build": "npm run rimraf dist && npm run tsc && npm run webpack -- --config config/webpack/webpack.prod.config.js && npm run compress",
     "watch": "npm run test:unit -- --auto-watch --no-single-run",
-    "lint": "tslint 'src/**/*.ts'"
+    "lint": "tslint 'src/**/*.ts'",
+    "rimraf": "rimraf",
+    "tsc": "tsc",
+    "uglifyjs": "uglifyjs",
+    "webpack": "webpack"
   },
   "repository": {
     "type": "git",
