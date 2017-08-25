@@ -59,6 +59,7 @@ export class AddinClient {
    */
   private heightChangeIntervalId: any;
 
+  /* istanbul ignore next */
   /**
    * @returns {string}  Returns the current query string path for the window, prefixed with ?.
    */
@@ -180,13 +181,13 @@ export class AddinClient {
   }
 
   /**
-   * Handles the close-modal message from the host.
+   * Handles the modal-closed message from the host.
    * This is emitted to add-ins which have previously launched a modal, which is now
    * closing.
    * @param message The message data, which includes a context object from the closing modal, which should be passed
    * to the calling modal in the showModal promise.
    */
-  private handleCloseModalMessage(message: AddinHostMessage) {
+  private handleModalClosedMessage(message: AddinHostMessage) {
     const modalRequests = this.modalRequests;
     const modalRequestId = message.modalRequestId;
     const modalRequest = modalRequests[modalRequestId];
@@ -255,8 +256,8 @@ export class AddinClient {
           case 'auth-token-fail':
             this.handleAuthTokenMessage(data);
             break;
-          case 'close-modal':
-            this.handleCloseModalMessage(data.message);
+          case 'modal-closed':
+            this.handleModalClosedMessage(data.message);
             break;
           case 'button-click':
             if (this.args.callbacks.buttonClick) {
@@ -360,7 +361,6 @@ export class AddinClient {
         return decodeURIComponent(pair[1]);
       }
     }
-    console.log('Query variable %s not found', variable);
   }
 
 }

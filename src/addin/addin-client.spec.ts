@@ -4,7 +4,7 @@ import { AddinClientCloseModalArgs } from './client-interfaces/addin-client-clos
 import { AddinClientInitArgs } from './client-interfaces/addin-client-init-args';
 import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
 import { AddinClientReadyArgs } from './client-interfaces/addin-client-ready-args';
-// import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
+import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
 // import { AddinClientShowModalResult } from './client-interfaces/addin-client-show-modal-result';
 // import { AddinHostMessage } from './host-interfaces/addin-host-message';
 import { AddinHostMessageEventData } from './host-interfaces/addin-host-message-event-data';
@@ -126,6 +126,31 @@ describe('AddinClient ', () => {
 
     });
 
+    it('should disregard host messages from the wrong origin.',
+      () => {
+        let buttonClickCalled = false;
+
+        const client = new AddinClient({
+          callbacks: {
+            buttonClick: () => { buttonClickCalled = true; },
+            init: () => { return; }
+          }
+        });
+
+        const msg: AddinHostMessageEventData = {
+          message: {},
+          messageType: 'button-click',
+          source: 'bb-addin-host'
+        };
+
+        // Raising this message even though the host never issued host-ready.
+        // Therefore the origin should not be trusted and message ignored.
+        postMessageFromHost(msg);
+        client.destroy();
+
+        expect(buttonClickCalled).toBe(false);
+      });
+
     describe('button-click', () => {
 
       it('should call the "buttonClick" callback.',
@@ -153,12 +178,34 @@ describe('AddinClient ', () => {
           expect(buttonClickCalled).toBe(true);
         });
 
+      it('should tolerate the "buttonClick" callback being undefined.',
+        () => {
+          const client = new AddinClient({
+            callbacks: {
+              init: () => { return; }
+            }
+          });
+
+          initializeHost();
+
+          const msg: AddinHostMessageEventData = {
+            message: {},
+            messageType: 'button-click',
+            source: 'bb-addin-host'
+          };
+
+          postMessageFromHost(msg);
+          client.destroy();
+
+          // No assertion.  Just don't fail.
+        });
+
     });
 
     describe('auth-token', () => {
 
       it('should pass result back through promise from getAuthToken.',
-        () => {
+        (done) => {
           let tokenReceived: string = null;
 
           const client = new AddinClient({
@@ -188,7 +235,8 @@ describe('AddinClient ', () => {
           // Delay the vaildation until after the post message is done.
           setTimeout(() => {
             expect(tokenReceived).toBe('the auth token');
-          }, 1);
+            done();
+          }, 0);
 
         });
 
@@ -228,6 +276,48 @@ describe('AddinClient ', () => {
           setTimeout(() => {
             expect(reasonReceived).toBe('the reason');
           }, 1);
+
+        });
+
+    });
+
+    describe('close-modal', () => {
+
+      it('should pass context back through promise from showModal.',
+        (done) => {
+          const testContext = {};
+          let contextReceived: any = null;
+
+          const client = new AddinClient({
+            callbacks: {
+              init: () => { return; }
+            }
+          });
+
+          initializeHost();
+          const args: AddinClientShowModalArgs = {};
+
+          client.showModal(args).modalClosed.then((ctx: any) => {
+            contextReceived = ctx;
+          });
+
+          const msg: AddinHostMessageEventData = {
+            message: {
+              context: testContext,
+              modalRequestId: 1 // One because this is the first request for this client.
+            },
+            messageType: 'modal-closed',
+            source: 'bb-addin-host'
+          };
+
+          postMessageFromHost(msg);
+          client.destroy();
+
+          // Delay the vaildation until after the post message is done.
+          setTimeout(() => {
+            expect(contextReceived).toBe(testContext);
+            done();
+          }, 100);
 
         });
 
@@ -375,6 +465,97 @@ describe('AddinClient ', () => {
         expect(postedMessage.message.url).toBe(args.url);
         expect(postedMessage.messageType).toBe('navigate');
         expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+      });
+
+  });
+
+  describe('showModal', () => {
+
+    it('should raise "show-modal" event with increasing request id.',
+      () => {
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        const args: AddinClientShowModalArgs = {};
+
+        client.showModal(args);
+
+        expect(postedMessage.message.args).toBe(args);
+        expect(postedMessage.message.modalRequestId).toBe(1);
+        expect(postedMessage.messageType).toBe('show-modal');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+
+        client.showModal(args);
+
+        // A second call should increment the request id
+        expect(postedMessage.message.args).toBe(args);
+        expect(postedMessage.message.modalRequestId).toBe(2);
+        expect(postedMessage.messageType).toBe('show-modal');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+
+        client.destroy();
+      });
+
+  });
+
+  describe('postMessageToHostPage', () => {
+
+    it('should warn if origin is invalid.',
+      () => {
+        const badOrigin = 'https://google.com';
+        let messageWasSentFromAddin = false;
+        let consoleWarningIssued = false;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        const msg: AddinHostMessageEventData = {
+          message: {},
+          messageType: 'host-ready',
+          source: 'bb-addin-host'
+        };
+
+        // Initialize from the host with a bad origin
+        postMessageFromHost(msg, badOrigin);
+
+        // Spy on messages from the add-in to make sure it doesn't post.
+        spyOn(window.parent, 'postMessage').and.callFake(() => {
+          messageWasSentFromAddin = true;
+        });
+
+        // Spy on messages from the add-in to make sure it doesn't post.
+        spyOn(console, 'warn').and.callFake(() => {
+          consoleWarningIssued = true;
+        });
+
+        const args: AddinClientNavigateArgs = {
+          url: 'https://renxt.blackbaud.com?test=1'
+        };
+
+        // Call navigate to trigger posting a message to the host.
+        // Should result in a warning and not post because the host origin was not valid.
+        client.navigate(args);
+
+        client.destroy();
+
+        expect(messageWasSentFromAddin).toBe(false);
+        expect(consoleWarningIssued).toBe(true);
       });
 
   });
