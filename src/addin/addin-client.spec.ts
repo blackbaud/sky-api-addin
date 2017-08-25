@@ -1,12 +1,9 @@
 import { AddinClient } from './addin-client';
-// import { AddinClientArgs } from './client-interfaces/addin-client-args';
 import { AddinClientCloseModalArgs } from './client-interfaces/addin-client-close-modal-args';
 import { AddinClientInitArgs } from './client-interfaces/addin-client-init-args';
 import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
 import { AddinClientReadyArgs } from './client-interfaces/addin-client-ready-args';
 import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
-// import { AddinClientShowModalResult } from './client-interfaces/addin-client-show-modal-result';
-// import { AddinHostMessage } from './host-interfaces/addin-host-message';
 import { AddinHostMessageEventData } from './host-interfaces/addin-host-message-event-data';
 
 const TEST_HOST_ORIGIN = 'https://host.nxt.blackbaud.com';
