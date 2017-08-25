@@ -1,12 +1,12 @@
 import { AddinClient } from './addin-client';
-import { AddinClientArgs } from './client-interfaces/addin-client-args';
+// import { AddinClientArgs } from './client-interfaces/addin-client-args';
 import { AddinClientCloseModalArgs } from './client-interfaces/addin-client-close-modal-args';
 import { AddinClientInitArgs } from './client-interfaces/addin-client-init-args';
-import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
+// import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
 import { AddinClientReadyArgs } from './client-interfaces/addin-client-ready-args';
-import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
-import { AddinClientShowModalResult } from './client-interfaces/addin-client-show-modal-result';
-import { AddinHostMessage } from './host-interfaces/addin-host-message';
+// import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
+// import { AddinClientShowModalResult } from './client-interfaces/addin-client-show-modal-result';
+// import { AddinHostMessage } from './host-interfaces/addin-host-message';
 import { AddinHostMessageEventData } from './host-interfaces/addin-host-message-event-data';
 
 const TEST_HOST_ORIGIN = 'https://host.nxt.blackbaud.com';
@@ -179,7 +179,7 @@ describe('AddinClient ', () => {
           source: 'bb-addin-host'
         };
 
-        spyOn(window.parent, 'postMessage').and.callFake((message, targetOrigin) => {
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
           postedMessage = message;
           postedOrigin = targetOrigin;
         });
@@ -199,7 +199,6 @@ describe('AddinClient ', () => {
 
     it('should raise "close-modal" event.',
       () => {
-        const readyArgs: AddinClientReadyArgs = {};
         let postedMessage: any;
         let postedOrigin: string;
 
@@ -211,7 +210,7 @@ describe('AddinClient ', () => {
 
         initializeHost();
 
-        spyOn(window.parent, 'postMessage').and.callFake((message, targetOrigin) => {
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
           postedMessage = message;
           postedOrigin = targetOrigin;
         });
