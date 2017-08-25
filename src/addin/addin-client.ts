@@ -20,16 +20,6 @@ const allowedOrigins = [
 ];
 
 /**
- * Counter to provide unique ids for each auth token request.
- */
-let lastAuthTokenRequestId = 0;
-
-/**
- * Counter to provide unique ids for each modal request.
- */
-let lastModalRequestId = 0;
-
-/**
  * Client for interacting with the parent page hosting the add-in.
  */
 export class AddinClient {
@@ -40,9 +30,19 @@ export class AddinClient {
   private authTokenRequests: any[] = [];
 
   /**
+   * Counter to provide unique ids for each auth token request.
+   */
+  private lastAuthTokenRequestId = 0;
+
+  /**
    * Tracks modal add-ins that have been launched from this add-in.
    */
   private modalRequests: any[] = [];
+
+  /**
+   * Counter to provide unique ids for each modal request.
+   */
+  private lastModalRequestId = 0;
 
   /**
    * The origin of the host page.
@@ -59,6 +59,7 @@ export class AddinClient {
    */
   private heightChangeIntervalId: any;
 
+  /* istanbul ignore next */
   /**
    * @returns {string}  Returns the current query string path for the window, prefixed with ?.
    */
@@ -108,7 +109,7 @@ export class AddinClient {
    */
   public getAuthToken(): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      const authTokenRequestId = ++lastAuthTokenRequestId;
+      const authTokenRequestId = ++this.lastAuthTokenRequestId;
 
       this.authTokenRequests[authTokenRequestId] = {
         reject,
@@ -133,7 +134,7 @@ export class AddinClient {
   public showModal(args: AddinClientShowModalArgs): AddinClientShowModalResult {
     return {
       modalClosed: new Promise<any>((resolve, reject) => {
-        const modalRequestId = ++lastModalRequestId;
+        const modalRequestId = ++this.lastModalRequestId;
 
         this.modalRequests[modalRequestId] = {
           reject,
@@ -180,13 +181,13 @@ export class AddinClient {
   }
 
   /**
-   * Handles the close-modal message from the host.
+   * Handles the modal-closed message from the host.
    * This is emitted to add-ins which have previously launched a modal, which is now
    * closing.
    * @param message The message data, which includes a context object from the closing modal, which should be passed
    * to the calling modal in the showModal promise.
    */
-  private handleCloseModalMessage(message: AddinHostMessage) {
+  private handleModalClosedMessage(message: AddinHostMessage) {
     const modalRequests = this.modalRequests;
     const modalRequestId = message.modalRequestId;
     const modalRequest = modalRequests[modalRequestId];
@@ -255,8 +256,8 @@ export class AddinClient {
           case 'auth-token-fail':
             this.handleAuthTokenMessage(data);
             break;
-          case 'close-modal':
-            this.handleCloseModalMessage(data.message);
+          case 'modal-closed':
+            this.handleModalClosedMessage(data.message);
             break;
           case 'button-click':
             if (this.args.callbacks.buttonClick) {
@@ -360,7 +361,6 @@ export class AddinClient {
         return decodeURIComponent(pair[1]);
       }
     }
-    console.log('Query variable %s not found', variable);
   }
 
 }

@@ -2,9 +2,9 @@ import { AddinClient } from './addin-client';
 // import { AddinClientArgs } from './client-interfaces/addin-client-args';
 import { AddinClientCloseModalArgs } from './client-interfaces/addin-client-close-modal-args';
 import { AddinClientInitArgs } from './client-interfaces/addin-client-init-args';
-// import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
+import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
 import { AddinClientReadyArgs } from './client-interfaces/addin-client-ready-args';
-// import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
+import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
 // import { AddinClientShowModalResult } from './client-interfaces/addin-client-show-modal-result';
 // import { AddinHostMessage } from './host-interfaces/addin-host-message';
 import { AddinHostMessageEventData } from './host-interfaces/addin-host-message-event-data';
@@ -126,6 +126,31 @@ describe('AddinClient ', () => {
 
     });
 
+    it('should disregard host messages from the wrong origin.',
+      () => {
+        let buttonClickCalled = false;
+
+        const client = new AddinClient({
+          callbacks: {
+            buttonClick: () => { buttonClickCalled = true; },
+            init: () => { return; }
+          }
+        });
+
+        const msg: AddinHostMessageEventData = {
+          message: {},
+          messageType: 'button-click',
+          source: 'bb-addin-host'
+        };
+
+        // Raising this message even though the host never issued host-ready.
+        // Therefore the origin should not be trusted and message ignored.
+        postMessageFromHost(msg);
+        client.destroy();
+
+        expect(buttonClickCalled).toBe(false);
+      });
+
     describe('button-click', () => {
 
       it('should call the "buttonClick" callback.',
@@ -151,6 +176,149 @@ describe('AddinClient ', () => {
           client.destroy();
 
           expect(buttonClickCalled).toBe(true);
+        });
+
+      it('should tolerate the "buttonClick" callback being undefined.',
+        () => {
+          const client = new AddinClient({
+            callbacks: {
+              init: () => { return; }
+            }
+          });
+
+          initializeHost();
+
+          const msg: AddinHostMessageEventData = {
+            message: {},
+            messageType: 'button-click',
+            source: 'bb-addin-host'
+          };
+
+          postMessageFromHost(msg);
+          client.destroy();
+
+          // No assertion.  Just don't fail.
+        });
+
+    });
+
+    describe('auth-token', () => {
+
+      it('should pass result back through promise from getAuthToken.',
+        (done) => {
+          let tokenReceived: string = null;
+
+          const client = new AddinClient({
+            callbacks: {
+              init: () => { return; }
+            }
+          });
+
+          initializeHost();
+
+          client.getAuthToken().then((token: string) => {
+            tokenReceived = token;
+          });
+
+          const msg: AddinHostMessageEventData = {
+            message: {
+              authToken: 'the auth token',
+              authTokenRequestId: 1 // One because this is the first request for this client.
+            },
+            messageType: 'auth-token',
+            source: 'bb-addin-host'
+          };
+
+          postMessageFromHost(msg);
+          client.destroy();
+
+          // Delay the vaildation until after the post message is done.
+          setTimeout(() => {
+            expect(tokenReceived).toBe('the auth token');
+            done();
+          }, 0);
+
+        });
+
+    });
+
+    describe('auth-token-fail', () => {
+
+      it('should reject the promise from getAuthToken and return the reason.',
+        () => {
+          let reasonReceived: string = null;
+
+          const client = new AddinClient({
+            callbacks: {
+              init: () => { return; }
+            }
+          });
+
+          initializeHost();
+
+          client.getAuthToken().catch((reason: string) => {
+            reasonReceived = reason;
+          });
+
+          const msg: AddinHostMessageEventData = {
+            message: {
+              authTokenRequestId: 1, // One because this is the first request for this client.
+              reason: 'the reason'
+            },
+            messageType: 'auth-token-fail',
+            source: 'bb-addin-host'
+          };
+
+          postMessageFromHost(msg);
+          client.destroy();
+
+          // Delay the vaildation until after the post message is done.
+          setTimeout(() => {
+            expect(reasonReceived).toBe('the reason');
+          }, 1);
+
+        });
+
+    });
+
+    describe('close-modal', () => {
+
+      it('should pass context back through promise from showModal.',
+        (done) => {
+          const testContext = {};
+          let contextReceived: any = null;
+
+          const client = new AddinClient({
+            callbacks: {
+              init: () => { return; }
+            }
+          });
+
+          initializeHost();
+          const args: AddinClientShowModalArgs = {};
+
+          client.showModal(args).modalClosed.then((ctx: any) => {
+            contextReceived = ctx;
+          });
+
+          const msg: AddinHostMessageEventData = {
+            message: {
+              context: testContext,
+              modalRequestId: 1 // One because this is the first request for this client.
+            },
+            messageType: 'modal-closed',
+            source: 'bb-addin-host'
+          };
+
+          postMessageFromHost(msg);
+          client.destroy();
+
+          // Delay the vaildation until after the post message is done.
+          setTimeout(() => {
+            expect(contextReceived).toBe(testContext);
+            done();
+          }, 100);
+
         });
 
     });
@@ -224,6 +392,231 @@ describe('AddinClient ', () => {
         expect(postedMessage.message).toBe(args);
         expect(postedMessage.messageType).toBe('close-modal');
         expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+      });
+
+  });
+
+  describe('getAuthToken', () => {
+
+    it('should raise "get-auth-token" event with increasing request id.',
+      () => {
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        client.getAuthToken();
+
+        expect(postedMessage.message.authTokenRequestId).toBe(1);
+        expect(postedMessage.messageType).toBe('get-auth-token');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+
+        client.getAuthToken();
+
+        // A second call should increment the request id
+        expect(postedMessage.message.authTokenRequestId).toBe(2);
+        expect(postedMessage.messageType).toBe('get-auth-token');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+
+        client.destroy();
+      });
+
+  });
+
+  describe('navigate', () => {
+
+    it('should raise "navigate" event with proper url.',
+      () => {
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        const args: AddinClientNavigateArgs = {
+          url: 'https://renxt.blackbaud.com?test=1'
+        };
+
+        client.navigate(args);
+
+        client.destroy();
+
+        expect(postedMessage.message.url).toBe(args.url);
+        expect(postedMessage.messageType).toBe('navigate');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+      });
+
+  });
+
+  describe('showModal', () => {
+
+    it('should raise "show-modal" event with increasing request id.',
+      () => {
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        const args: AddinClientShowModalArgs = {};
+
+        client.showModal(args);
+
+        expect(postedMessage.message.args).toBe(args);
+        expect(postedMessage.message.modalRequestId).toBe(1);
+        expect(postedMessage.messageType).toBe('show-modal');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+
+        client.showModal(args);
+
+        // A second call should increment the request id
+        expect(postedMessage.message.args).toBe(args);
+        expect(postedMessage.message.modalRequestId).toBe(2);
+        expect(postedMessage.messageType).toBe('show-modal');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+
+        client.destroy();
+      });
+
+  });
+
+  describe('postMessageToHostPage', () => {
+
+    it('should warn if origin is invalid.',
+      () => {
+        const badOrigin = 'https://google.com';
+        let messageWasSentFromAddin = false;
+        let consoleWarningIssued = false;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        const msg: AddinHostMessageEventData = {
+          message: {},
+          messageType: 'host-ready',
+          source: 'bb-addin-host'
+        };
+
+        // Initialize from the host with a bad origin
+        postMessageFromHost(msg, badOrigin);
+
+        // Spy on messages from the add-in to make sure it doesn't post.
+        spyOn(window.parent, 'postMessage').and.callFake(() => {
+          messageWasSentFromAddin = true;
+        });
+
+        // Spy on messages from the add-in to make sure it doesn't post.
+        spyOn(console, 'warn').and.callFake(() => {
+          consoleWarningIssued = true;
+        });
+
+        const args: AddinClientNavigateArgs = {
+          url: 'https://renxt.blackbaud.com?test=1'
+        };
+
+        // Call navigate to trigger posting a message to the host.
+        // Should result in a warning and not post because the host origin was not valid.
+        client.navigate(args);
+
+        client.destroy();
+
+        expect(messageWasSentFromAddin).toBe(false);
+        expect(consoleWarningIssued).toBe(true);
+      });
+
+  });
+
+  describe('trackHeightChangesOfAddinContent', () => {
+
+    it('should raise "height-change" event when the height changes.',
+      () => {
+        jasmine.clock().install();
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        // Change height and wait for interval
+        document.body.style.height = '100px';
+        expect(document.body.offsetHeight).toBe(100);
+        jasmine.clock().tick(1100);
+
+        // Validate message was sent.
+        expect(postedMessage.message.height).toBe('100px');
+        expect(postedMessage.messageType).toBe('height-change');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+        postedMessage = undefined;
+        postedOrigin = undefined;
+
+        // Change height and wait for interval
+        document.body.style.height = '200px';
+        expect(document.body.offsetHeight).toBe(200);
+        jasmine.clock().tick(1100);
+
+        // Validate message was sent.
+        expect(postedMessage.message.height).toBe('200px');
+        expect(postedMessage.messageType).toBe('height-change');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+        postedMessage = undefined;
+        postedOrigin = undefined;
+
+        // Don't change height and wait for interval
+        expect(document.body.offsetHeight).toBe(200);
+        jasmine.clock().tick(1100);
+
+        // Validate message was sent.
+        expect(postedMessage).toBe(undefined);
+        expect(postedOrigin).toBe(undefined);
+        postedMessage = undefined;
+        postedOrigin = undefined;
+
+        client.destroy();
+        jasmine.clock().uninstall();
       });
 
   });
