@@ -560,4 +560,65 @@ describe('AddinClient ', () => {
 
   });
 
+  describe('trackHeightChangesOfAddinContent', () => {
+
+    it('should raise "height-change" event when the height changes.',
+      () => {
+        jasmine.clock().install();
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        // Change height and wait for interval
+        document.body.style.height = '100px';
+        expect(document.body.offsetHeight).toBe(100);
+        jasmine.clock().tick(1100);
+
+        // Validate message was sent.
+        expect(postedMessage.message.height).toBe('100px');
+        expect(postedMessage.messageType).toBe('height-change');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+        postedMessage = undefined;
+        postedOrigin = undefined;
+
+        // Change height and wait for interval
+        document.body.style.height = '200px';
+        expect(document.body.offsetHeight).toBe(200);
+        jasmine.clock().tick(1100);
+
+        // Validate message was sent.
+        expect(postedMessage.message.height).toBe('200px');
+        expect(postedMessage.messageType).toBe('height-change');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+        postedMessage = undefined;
+        postedOrigin = undefined;
+
+        // Don't change height and wait for interval
+        expect(document.body.offsetHeight).toBe(200);
+        jasmine.clock().tick(1100);
+
+        // Validate message was sent.
+        expect(postedMessage).toBe(undefined);
+        expect(postedOrigin).toBe(undefined);
+        postedMessage = undefined;
+        postedOrigin = undefined;
+
+        client.destroy();
+        jasmine.clock().uninstall();
+      });
+
+  });
+
 });
