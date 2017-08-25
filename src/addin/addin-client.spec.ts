@@ -2,7 +2,7 @@ import { AddinClient } from './addin-client';
 // import { AddinClientArgs } from './client-interfaces/addin-client-args';
 import { AddinClientCloseModalArgs } from './client-interfaces/addin-client-close-modal-args';
 import { AddinClientInitArgs } from './client-interfaces/addin-client-init-args';
-// import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
+import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
 import { AddinClientReadyArgs } from './client-interfaces/addin-client-ready-args';
 // import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
 // import { AddinClientShowModalResult } from './client-interfaces/addin-client-show-modal-result';
@@ -223,6 +223,79 @@ describe('AddinClient ', () => {
 
         expect(postedMessage.message).toBe(args);
         expect(postedMessage.messageType).toBe('close-modal');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+      });
+
+  });
+
+  describe('getAuthToken', () => {
+
+    it('should raise "get-auth-token" event with increasing request id.',
+      () => {
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        client.getAuthToken();
+
+        expect(postedMessage.message.authTokenRequestId).toBe(1);
+        expect(postedMessage.messageType).toBe('get-auth-token');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+
+        client.getAuthToken();
+
+        // A second call should increment the request id
+        expect(postedMessage.message.authTokenRequestId).toBe(2);
+        expect(postedMessage.messageType).toBe('get-auth-token');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+
+        client.destroy();
+      });
+
+  });
+
+  describe('navigate', () => {
+
+    it('should raise "navigate" event with proper url.',
+      () => {
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        const args: AddinClientNavigateArgs = {
+          url: 'https://renxt.blackbaud.com?test=1'
+        };
+
+        client.navigate(args);
+
+        client.destroy();
+
+        expect(postedMessage.message.url).toBe(args.url);
+        expect(postedMessage.messageType).toBe('navigate');
         expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
       });
 
