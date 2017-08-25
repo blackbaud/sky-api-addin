@@ -6,15 +6,12 @@ SKY API add-in client
 
 ## Usage
 
-This library facilitates creating custom add-ins to extend UI experiences within Blackbaud applications.  There are various flavors of extension points, but the general pattern is the same.  The add-in is registered by providing the URL that will be loaded in an iFrame within the application.
+This library facilitates creating custom add-ins to extend UI experiences within Blackbaud applications.  There are various flavors of extension points, but the general pattern is the same.  The add-in is registered by providing the URL that will be loaded in an iframe within the application.
 
 This library must be used in your add-in for it to render in the Blackbaud application. The `AddinClient` class will integrate with the host page, passing data and commands between the host and the addin.
 
 #### Initializing the Add-in
-
-All add-ins Construct the `AddinClient` and register for any callbacks from the host page that you wish to handle.  You *must* register for `init`, which will pass the add-in key context information.
-
-Construct the `AddinClient` and register for any callbacks from the host page that you wish to handle.  You *must* register for `init`, which will pass key context information to your add-in.
+All add-ins must use this library in order to show in the host application. You will need to construct the `AddinClient` and register for any callbacks from the host page that you wish to handle.  You *must* register for `init`, which will pass key context information to your add-in.
 
 Your `init` function will be called with an arguments object that contains:
 
@@ -25,7 +22,7 @@ Your `init` function will be called with an arguments object that contains:
 Using the information provided in the `init` arguments, the add-in should determine if and how it should be rendered.  Then it should call the `ready` callback, informing the host page.
 
 ```js
-this.client = new AddinClient({
+var client = new AddinClient({
   callbacks: {
     init: (args) => {
       args.ready({ showUI: true, title: 'My Custom Tile Title' });
@@ -35,17 +32,17 @@ this.client = new AddinClient({
 ```
 
 #### Tile and Tab Add-ins
-For tile or tab add-ins, the URL for the add-in will be rendered in a visible iFrame on the page, where you can render any custom content.  The iFrame will initially be hidden until an initialize protocol is completed between the host and the add-in.
+For tile or tab add-ins, the URL for the add-in will be rendered in a visible iframe on the page, where you can render any custom content.  The iframe will initially be hidden until an initialize protocol is completed between the host and the add-in.
 
 The host page will handle rendering the tile or tab component around the add-in iframe.  When calling the `ready` callback, the `title` field will indicate the title for the tile or tab component.  Initially, the entire tile/tab will be hidden, and will show on the page if `showUI` is set to `true` in the callback.  You can set it to `false` to indicate that the tile/tab should not be shown, based on the user's privileges or context of the current record, etc.
 
 #### Button Add-ins
-For button add-ins, the add-in iFrame will always be hidden.  The `init` protocol is still used, where `showUI` indicates whether the button should show or not on the page.  The `title` field will specify the label for the button.
+For button add-ins, the add-in iframe will always be hidden.  The `init` protocol is still used, where `showUI` indicates whether the button should show or not on the page.  The `title` field will specify the label for the button.
 
 When doing a button add-in, an additional callback for `buttonClick` should be configured.  This will be invoked whenever the user clicks the button for the add-in to take action.
 
 ```js
-this.client = new AddinClient({
+var client = new AddinClient({
   callbacks: {
     init: (args) => {
       args.ready({ showUI: true, title: 'My Custom Button Label' });
@@ -58,13 +55,67 @@ this.client = new AddinClient({
 ```
 
 #### Authentication
+The `AddinClient` provides a `getAuthToken` function for getting an authentication token from the host application.  The token will be a signed JWT with the user's id.  This can be used to look up Sky API tokens for the user or reference then user in an external system.  The JWT should be validated in any system that it passed to before trusting the contents.
+
+##### Getting the authentication token
+The `getAuthToken` function will return a promise which will resolve when the token value.
+
+```js
+var client = new AddinClient({...}
+client.getAuthToken().then((token: string) => {
+  // use the token.
+});
+```
+##### Validating the token
 
 #### Showing a modal
+The add-in is capable of launching a modal experience over the full page, whether it is a button, tile, or tab add-in type.  The modal will not be scoped to the bounds of the tile.
+
+To launch a modal, call the `showModal` function on the client, passing the URL for the modal and any context data to pass to the modal.
+
+```js
+// Parent add-in launching a modal
+var client = new AddinClient({...}
+client.showModal({
+  url: '<modal-addin-url',
+  context: { /* arbitrary context object to pass to modal */ }
+});
+```
+##### Modal Add-in
+The host page will launch a full screen iframe for the URL provided, and load it as an add-in the same way it does for tile add-ins.  This page must pull in this same library and use the AddinClient.
+
+The modal add-in will be responsible for rendering the modal element itself.  To create a native modal experience, the add-in may set the body background to `transparent` and launch a SKY UX modal within its full screen iframe.
+
+Like a typical add-in, the modal add-in should register for the `init` callback and will receive `envId` in the arguments. The `context` field for arguments will match the context object passed into the `showModal` call from the parent add-in.  Note that this is crossing iframes so the object has been serialized and deserialized.  It can be used for passing data but not functions.
+
+##### Closing the Modal
+The modal add-in is responsible for triggering the close with the `closeModal` function on the client.  It is able to pass context information back to the parent add-in:
+
+```js
+// Modal add-in rendered in full screen iframe
+var client = new AddinClient({...}
+client.closeModal({
+  context: { /* arbitrary context object to pass to parent add-in */ }
+});
+```
+The parent add-in can listen to the close event via promise returned from `showModal`. The promise will resolve when the modal is closed and include the context data returned from the modal:
+
+```js
+// Parent add-in launching a modal
+var client = new AddinClient({...}
+client.showModal({
+  url: '<modal-addin-url',
+  context: { /* arbitrary context object to pass to modal */ }
+}).then((context) => {
+  // Handle that the modal is closed.
+  // Use the context data passed back from closeModal.
+});
+```
 
 #### Navigating the parent page
 The add-in can choose to navigate the parent page based on user ineractions.  To do so, call `navigate` on the `AddinClient` object.  This function takes an object argument with property `url` for where to navigate.
 
 ```js
-this.client = new AddinClient({...}
-this.client.navigate({ url: '<target_url>' });
+var client = new AddinClient({...}
+client.navigate({ url: '<target_url>' });
 ```
