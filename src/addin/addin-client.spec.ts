@@ -155,6 +155,84 @@ describe('AddinClient ', () => {
 
     });
 
+    describe('auth-token', () => {
+
+      it('should pass result back through promise from getAuthToken.',
+        () => {
+          let tokenReceived: string = null;
+
+          const client = new AddinClient({
+            callbacks: {
+              init: () => { return; }
+            }
+          });
+
+          initializeHost();
+
+          client.getAuthToken().then((token: string) => {
+            tokenReceived = token;
+          });
+
+          const msg: AddinHostMessageEventData = {
+            message: {
+              authToken: 'the auth token',
+              authTokenRequestId: 1 // One because this is the first request for this client.
+            },
+            messageType: 'auth-token',
+            source: 'bb-addin-host'
+          };
+
+          postMessageFromHost(msg);
+          client.destroy();
+
+          // Delay the vaildation until after the post message is done.
+          setTimeout(() => {
+            expect(tokenReceived).toBe('the auth token');
+          }, 1);
+
+        });
+
+    });
+
+    describe('auth-token-fail', () => {
+
+      it('should reject the promise from getAuthToken and return the reason.',
+        () => {
+          let reasonReceived: string = null;
+
+          const client = new AddinClient({
+            callbacks: {
+              init: () => { return; }
+            }
+          });
+
+          initializeHost();
+
+          client.getAuthToken().catch((reason: string) => {
+            reasonReceived = reason;
+          });
+
+          const msg: AddinHostMessageEventData = {
+            message: {
+              authTokenRequestId: 1, // One because this is the first request for this client.
+              reason: 'the reason'
+            },
+            messageType: 'auth-token-fail',
+            source: 'bb-addin-host'
+          };
+
+          postMessageFromHost(msg);
+          client.destroy();
+
+          // Delay the vaildation until after the post message is done.
+          setTimeout(() => {
+            expect(reasonReceived).toBe('the reason');
+          }, 1);
+
+        });
+
+    });
+
   });
 
   describe('init ready callback', () => {

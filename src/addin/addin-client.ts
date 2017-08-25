@@ -20,16 +20,6 @@ const allowedOrigins = [
 ];
 
 /**
- * Counter to provide unique ids for each auth token request.
- */
-let lastAuthTokenRequestId = 0;
-
-/**
- * Counter to provide unique ids for each modal request.
- */
-let lastModalRequestId = 0;
-
-/**
  * Client for interacting with the parent page hosting the add-in.
  */
 export class AddinClient {
@@ -40,9 +30,19 @@ export class AddinClient {
   private authTokenRequests: any[] = [];
 
   /**
+   * Counter to provide unique ids for each auth token request.
+   */
+  private lastAuthTokenRequestId = 0;
+
+  /**
    * Tracks modal add-ins that have been launched from this add-in.
    */
   private modalRequests: any[] = [];
+
+  /**
+   * Counter to provide unique ids for each modal request.
+   */
+  private lastModalRequestId = 0;
 
   /**
    * The origin of the host page.
@@ -108,7 +108,7 @@ export class AddinClient {
    */
   public getAuthToken(): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      const authTokenRequestId = ++lastAuthTokenRequestId;
+      const authTokenRequestId = ++this.lastAuthTokenRequestId;
 
       this.authTokenRequests[authTokenRequestId] = {
         reject,
@@ -133,7 +133,7 @@ export class AddinClient {
   public showModal(args: AddinClientShowModalArgs): AddinClientShowModalResult {
     return {
       modalClosed: new Promise<any>((resolve, reject) => {
-        const modalRequestId = ++lastModalRequestId;
+        const modalRequestId = ++this.lastModalRequestId;
 
         this.modalRequests[modalRequestId] = {
           reject,
