@@ -16,7 +16,7 @@ All add-ins must use this library in order to show in the host application. You 
 Your `init` function will be called with an arguments object that contains:
 
  - `envId` - The environment id for the host page
- - `context` - Additional context of the host page, which will vary for different extensibility points.
+ - `context` - Additional context of the host page, which will vary for different extension points.
  - `ready` - A callback to inform the add-in client that the add-in is initialized and ready to be shown.
 
 Using the information provided in the `init` arguments, the add-in should determine if and how it should be rendered.  Then it should call the `ready` callback, informing the host page.
