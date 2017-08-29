@@ -1,14 +1,23 @@
 # sky-api-addin
-SKY API add-in client
-
 [![npm](https://img.shields.io/npm/v/@blackbaud/sky-api-addin.svg)](https://www.npmjs.com/package/@blackbaud/sky-api-addin)
 [![status](https://travis-ci.org/blackbaud/sky-api-addin.svg?branch=master)](https://travis-ci.org/blackbaud/sky-api-addin)
 
+The SKY API add-in library facilitates creating custom add-ins to extend UI experiences within Blackbaud applications. There are various flavors of extension points, but the general pattern is the same. The add-in is registered by providing the URL that will be loaded in an iframe within the application.
+
+This library must be used in your add-in for it to render in the Blackbaud application. The AddinClient class will integrate with the host page, passing data and commands between the host and the addin.
+
+## Installation
+
+- Ensure that you have Node v6+ and NPM v3+. To verify this, run `node -v` and `npm -v` at the command line.
+- Install the library as a dependency of your project by running `npm install @blackbaud/sky-api-addin --save` in your project's folder.
+
 ## Usage
 
-This library facilitates creating custom add-ins to extend UI experiences within Blackbaud applications.  There are various flavors of extension points, but the general pattern is the same.  The add-in is registered by providing the URL that will be loaded in an iframe within the application.
+### Prerequisites
 
-This library must be used in your add-in for it to render in the Blackbaud application. The `AddinClient` class will integrate with the host page, passing data and commands between the host and the addin.
+This library makes extensive use of [ES6-style Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise), so in order to support browsers that do not yet have native support for Promises (such as Internet Explorer 11) you will need to include a Promise polyfill such as [`es6-promise`](https://github.com/stefanpenner/es6-promise) and use the [auto-polyfill feature](https://github.com/stefanpenner/es6-promise#auto-polyfill) of the library so that `Promise` is added to the global environment.  This will need to be loaded on your page before the add-in library.
+
+### ES6/TypeScript
 
 #### Initializing the Add-in
 All add-ins must use this library in order to show in the host application. You will need to construct the `AddinClient` and register for any callbacks from the host page that you wish to handle.  You *must* register for `init`, which will pass key context information to your add-in.
@@ -36,6 +45,8 @@ For tile or tab add-ins, the URL for the add-in will be rendered in a visible if
 
 The host page will handle rendering the tile or tab component around the add-in iframe.  When calling the `ready` callback, the `title` field will indicate the title for the tile or tab component.  Initially, the entire tile/tab will be hidden, and will show on the page if `showUI` is set to `true` in the callback.  You can set it to `false` to indicate that the tile/tab should not be shown, based on the user's privileges or context of the current record, etc.
 
+Tile and tab add-ins will automatically track the height of the add-in's content and resize its container accordingly.
+
 #### Button Add-ins
 For button add-ins, the add-in iframe will always be hidden.  The `init` protocol is still used, where `showUI` indicates whether the button should show or not on the page.  The `title` field will specify the label for the button.
 
@@ -61,7 +72,7 @@ The `AddinClient` provides a `getAuthToken` function for getting an authenticati
 The `getAuthToken` function will return a promise which will resolve when the token value.
 
 ```js
-var client = new AddinClient({...}
+var client = new AddinClient({...});
 client.getAuthToken().then((token: string) => {
   // use the token.
 });
@@ -75,7 +86,7 @@ To launch a modal, call the `showModal` function on the client, passing the URL 
 
 ```js
 // Parent add-in launching a modal
-var client = new AddinClient({...}
+var client = new AddinClient({...});
 client.showModal({
   url: '<modal-addin-url>',
   context: { /* arbitrary context object to pass to modal */ }
@@ -93,7 +104,7 @@ The modal add-in is responsible for triggering the close with the `closeModal` f
 
 ```js
 // Modal add-in rendered in full screen iframe
-var client = new AddinClient({...}
+var client = new AddinClient({...});
 client.closeModal({
   context: { /* arbitrary context object to pass to parent add-in */ }
 });
@@ -102,7 +113,7 @@ The parent add-in can listen to the close event via promise returned from `showM
 
 ```js
 // Parent add-in launching a modal
-var client = new AddinClient({...}
+var client = new AddinClient({...});
 client.showModal({
   url: '<modal-addin-url>',
   context: { /* arbitrary context object to pass to modal */ }
@@ -116,6 +127,22 @@ client.showModal({
 The add-in can choose to navigate the parent page based on user ineractions.  To do so, call `navigate` on the `AddinClient` object.  This function takes an object argument with property `url` for where to navigate.
 
 ```js
-var client = new AddinClient({...}
+var client = new AddinClient({...});
 client.navigate({ url: '<target_url>' });
+```
+
+### Vanilla JavaScript/ES5
+
+The SKY API add-in library is also distributed as a UMD bundle.  If you're using ES5 with Node or a tool like Browserify you can `require()` it:
+
+```
+var BBSkyApiAddin = require('@blackbaud/sky-api-addin');
+var client = new BBSkyApiAddin.AddinClient({...});
+```
+
+If you're using no module loader at all, then you can load the `dist/bundles/sky-api-addin.umd.js` file onto your page and via a `<script>` element or concatenated with the rest of your page's JavaScript and access it via the global `BBSkyApiAddin` variable:
+
+```
+// BBSkyApiAddin is global here.
+var client = new BBSkyApiAddin.AddinClient({...});
 ```
