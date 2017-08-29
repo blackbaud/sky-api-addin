@@ -77,7 +77,7 @@ To launch a modal, call the `showModal` function on the client, passing the URL 
 // Parent add-in launching a modal
 var client = new AddinClient({...}
 client.showModal({
-  url: '<modal-addin-url',
+  url: '<modal-addin-url>',
   context: { /* arbitrary context object to pass to modal */ }
 });
 ```
@@ -104,7 +104,7 @@ The parent add-in can listen to the close event via promise returned from `showM
 // Parent add-in launching a modal
 var client = new AddinClient({...}
 client.showModal({
-  url: '<modal-addin-url',
+  url: '<modal-addin-url>',
   context: { /* arbitrary context object to pass to modal */ }
 }).then((context) => {
   // Handle that the modal is closed.
