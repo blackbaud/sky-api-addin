@@ -564,27 +564,34 @@ describe('AddinClient ', () => {
         jasmine.clock().install();
         let postedMessage: any;
         let postedOrigin: string;
+        let initArgs = null;
 
         const client = new AddinClient({
           callbacks: {
-            init: () => { return; }
+            init: (args) => { initArgs = args; }
           }
         });
 
         initializeHost();
 
         spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
-          postedMessage = message;
-          postedOrigin = targetOrigin;
+          // Filter out the add-in ready event.
+          if (message.messageType === 'height-change') {
+            postedMessage = message;
+            postedOrigin = targetOrigin;
+          }
         });
 
         // Change height and wait for interval
+        // The height posted should be the sum of offset height and top/bottom margin.
+        document.body.style.marginTop = '10px';
+        document.body.style.marginBottom = '5px';
         document.body.style.height = '100px';
         expect(document.body.offsetHeight).toBe(100);
         jasmine.clock().tick(1100);
 
         // Validate message was sent.
-        expect(postedMessage.message.height).toBe('100px');
+        expect(postedMessage.message.height).toBe('115px');
         expect(postedMessage.messageType).toBe('height-change');
         expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
         postedMessage = undefined;
@@ -596,7 +603,7 @@ describe('AddinClient ', () => {
         jasmine.clock().tick(1100);
 
         // Validate message was sent.
-        expect(postedMessage.message.height).toBe('200px');
+        expect(postedMessage.message.height).toBe('215px');
         expect(postedMessage.messageType).toBe('height-change');
         expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
         postedMessage = undefined;
@@ -609,6 +616,19 @@ describe('AddinClient ', () => {
         // Validate message was sent.
         expect(postedMessage).toBe(undefined);
         expect(postedOrigin).toBe(undefined);
+        postedMessage = undefined;
+        postedOrigin = undefined;
+
+        // Change height and complete init.ready.  This should trigger the message even without waiting
+        // on the interval to pass.
+        document.body.style.height = '300px';
+        expect(document.body.offsetHeight).toBe(300);
+        initArgs.ready();
+
+        // Validate message was sent.
+        expect(postedMessage.message.height).toBe('315px');
+        expect(postedMessage.messageType).toBe('height-change');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
         postedMessage = undefined;
         postedOrigin = undefined;
 
