@@ -124,7 +124,7 @@ client.showModal({
 ```
 
 #### Navigating the parent page
-The add-in can choose to navigate the parent page based on user ineractions.  To do so, call `navigate` on the `AddinClient` object.  This function takes an object argument with property `url` for where to navigate.
+The add-in can choose to navigate the parent page based on user ineractions.  To do so, call `navigate` on the `AddinClient` object.  This function takes an object argument with property `url` for where to navigate. A fully qualified url should be used.
 
 ```js
 var client = new AddinClient({...});
