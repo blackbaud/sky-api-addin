@@ -59,6 +59,11 @@ export class AddinClient {
    */
   private heightChangeIntervalId: any;
 
+  /**
+   * Tracks the last height posted to the host page.
+   */
+  private lastPostedIframeHeight: number;
+
   /* istanbul ignore next */
   /**
    * @returns {string}  Returns the current query string path for the window, prefixed with ?.
@@ -242,6 +247,9 @@ export class AddinClient {
           context: data.message.context,
           envId: data.message.envId,
           ready: (args: AddinClientReadyArgs) => {
+            // Do an immediate height check since the add-in may render something
+            // due to the context provided.  No need to wait a full second to reflect.
+            this.checkForHeightChangesOfAddinContent();
             this.postMessageToHostPage({
               message: args,
               messageType: 'addin-ready'
@@ -288,25 +296,33 @@ export class AddinClient {
   }
 
   /**
+   * Checks if the height of the iFrame has changed since it was last
+   * posted to the host page (or if it hasn't been posted yet) and initiates
+   * a new post if so.
+   */
+  private checkForHeightChangesOfAddinContent() {
+    const style = getComputedStyle(document.body);
+    const newHeight = document.body.offsetHeight + parseInt(style.marginTop, 10) + parseInt(style.marginBottom, 10);
+
+    if (newHeight !== this.lastPostedIframeHeight) {
+      this.lastPostedIframeHeight = newHeight;
+
+      this.postMessageToHostPage({
+        message: {
+          height: newHeight + 'px'
+        },
+        messageType: 'height-change'
+      });
+    }
+  }
+
+  /**
    * Starts a timeout interval to watch for height changes
    * of the iframe content.
    */
   private trackHeightChangesOfAddinContent() {
-    let currentHeight: number;
-
     this.heightChangeIntervalId = setInterval(() => {
-      const newHeight = document.body.offsetHeight;
-
-      if (newHeight !== currentHeight) {
-        currentHeight = newHeight;
-
-        this.postMessageToHostPage({
-          message: {
-            height: newHeight + 'px'
-          },
-          messageType: 'height-change'
-        });
-      }
+      this.checkForHeightChangesOfAddinContent();
     }, 1000);
   }
 
