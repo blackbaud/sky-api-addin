@@ -109,7 +109,7 @@ client.closeModal({
   context: { /* arbitrary context object to pass to parent add-in */ }
 });
 ```
-The parent add-in can listen to the close event via promise returned from `showModal`. The promise will resolve when the modal is closed and include the context data returned from the modal:
+The parent add-in can listen to the close event via the `modalClosed` promise returned from `showModal`. The promise will resolve when the modal is closed and include the context data returned from the modal:
 
 ```js
 // Parent add-in launching a modal
@@ -117,7 +117,7 @@ var client = new AddinClient({...});
 client.showModal({
   url: '<modal-addin-url>',
   context: { /* arbitrary context object to pass to modal */ }
-}).then((context) => {
+}).modalClosed.then((context) => {
   // Handle that the modal is closed.
   // Use the context data passed back from closeModal.
 });
