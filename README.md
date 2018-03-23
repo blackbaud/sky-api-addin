@@ -109,15 +109,17 @@ client.closeModal({
   context: { /* arbitrary context object to pass to parent add-in */ }
 });
 ```
-The parent add-in can listen to the close event via promise returned from `showModal`. The promise will resolve when the modal is closed and include the context data returned from the modal:
+The parent add-in can listen to the close event via the `modalClosed` promise returned from `showModal`. The promise will resolve when the modal is closed and include the context data returned from the modal:
 
 ```js
 // Parent add-in launching a modal
 var client = new AddinClient({...});
-client.showModal({
+var modal = client.showModal({
   url: '<modal-addin-url>',
   context: { /* arbitrary context object to pass to modal */ }
-}).then((context) => {
+});
+
+modal.modalClosed.then((context) => {
   // Handle that the modal is closed.
   // Use the context data passed back from closeModal.
 });
@@ -135,14 +137,14 @@ client.navigate({ url: '<target_url>' });
 
 The SKY API add-in library is also distributed as a UMD bundle.  If you're using ES5 with Node or a tool like Browserify you can `require()` it:
 
-```
+```js
 var BBSkyApiAddin = require('@blackbaud/sky-api-addin');
 var client = new BBSkyApiAddin.AddinClient({...});
 ```
 
 If you're using no module loader at all, then you can load the `dist/bundles/sky-api-addin.umd.js` file onto your page and via a `<script>` element or concatenated with the rest of your page's JavaScript and access it via the global `BBSkyApiAddin` variable:
 
-```
+```js
 // BBSkyApiAddin is global here.
 var client = new BBSkyApiAddin.AddinClient({...});
 ```
