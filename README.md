@@ -24,7 +24,7 @@ All add-ins must use this library in order to show in the host application. You 
 
 Your `init` function will be called with an arguments object that contains:
 
- - `envId` - The environment id for the host page
+ - `envId` - The environment ID for the host page
  - `context` - Additional context of the host page, which will vary for different extension points.
  - `ready` - A callback to inform the add-in client that the add-in is initialized and ready to be shown.
 
@@ -47,7 +47,9 @@ The host page will handle rendering the tile or tab component around the add-in 
 
 Tile and tab add-ins will automatically track the height of the add-in's content and resize its container accordingly.
 
-#### Button Add-ins
+Note:  at this time, only Tile add-ins are supported.  Tab add-ins are planned as a future enhancement.
+
+#### Button Add-ins (not yet supported, but coming soon)
 For button add-ins, the add-in iframe will always be hidden.  The `init` protocol is still used, where `showUI` indicates whether the button should show or not on the page.  The `title` field will specify the label for the button.
 
 When doing a button add-in, an additional callback for `buttonClick` should be configured.  This will be invoked whenever the user clicks the button for the add-in to take action.
@@ -66,18 +68,58 @@ var client = new AddinClient({
 ```
 
 #### Authentication
-The `AddinClient` provides a `getAuthToken` function for getting an authentication token from the host application.  The token will be a signed JWT with the user's id.  This can be used to look up Sky API tokens for the user or reference then user in an external system.  The JWT should be validated in any system that it passed to before trusting the contents.
+SKY API add-ins support a single-sign-on (SSO) mechanism that can be used to correlate the Blackbaud user with a user in the add-in's native system.
 
-##### Getting the authentication token
-The `getAuthToken` function will return a promise which will resolve when the token value.
+The `AddinClient` provides a `getAuthToken` function for getting a short-lived "user identity token" from the host page.  This token is a signed value that is issued to the SKY API application and represents the Blackbaud user's identity.
+
+The general flow is that when an add-in is instantiated, it can request a user identity token from the host page using the `getAuthtoken` function. The host page will return the user identity token to the add-in.  The add-in can then pass the token to its own backend, where it can be validated and used to look up a user in the add-in's native system. If a user mapping exists, then the add-in can present content to the user.  If no user mapping exists, the add-in can prompt the user to login.  Once the user's identity in the native system is known, the add-in can persist the user mapping so that on subsequent loads the user doesn't have to log in again (even across devices).
+
+Note that the user identity token is a JWT that is signed by the SKY API OAuth 2.0 service, but it cannot be used to make calls to the SKY API.  In order to make SKY API calls, a proper SKY API access token must be obtained.
+
+##### Getting the user identity token
+The `getAuthToken` function will return a Promise which will resolve with the token value.
 
 ```js
 var client = new AddinClient({...});
 client.getAuthToken().then((token: string) => {
   // use the token.
+  var userIdentityToken = token;
+  . . .
 });
 ```
 ##### Validating the token
+
+After obtaining a user identity token from the host page, the add-in can pass the token to its own backend.  The backend should first validate the token against the SKY API OpenIDConnect endpoint in order to ensure that it hasn't expired or been altered in any way.  This validation step is required in order for the backend to trust the user identity token.
+
+The OpenIDConnect configuration can be found at https://oauth2.sky.blackbaud.com/.well-known/openid-configuration.
+
+Developers building add-ins in .NET can make use of a Blackbaud-provided library to assist with validating the user identity token. This library is distributed as a NuGet package named `Blackbaud.Addin.TokenAuthentication`.  The package wraps up the logic for validating the user identity token JWT, and can be found at https://www.nuget.org/packages/Blackbaud.Addin.tokenAuthentication.
+
+The following C# code snippet shows how to use the `Blackbaud.Addin.TokenAuthentication` library to validate the raw JWT token value passed in from the add-in client:
+
+```cs
+// this represents the user identity token returned from getAuthToken()
+var rawToken = "(raw token value)";
+
+// this is the ID of the developer's SKY API application
+var applicationId = "(some application ID)";
+
+// create and validate the user identity token
+UserIdentityToken uit;
+try
+{
+    uit = await UserIdentityToken.ParseAsync(rawToken, applicationId);
+
+    // if valid, the UserId property contains the Blackbaud user's ID
+    var userId = uit.UserId;
+}
+catch (TokenValidationException ex)
+{
+    // process the exception
+}
+```
+
+Once the token has been validated, the addin's backend will know the Blackbaud user ID and can determine if a user mapping exists for a user in the add-in's system. If a mapping exists, then the add-in's backend can immediately present the content for the add-in. If no user mapping exists, the add-in can prompt the user to login.
 
 #### Showing a modal
 The add-in is capable of launching a modal experience over the full page, whether it is a button, tile, or tab add-in type.  The modal will not be scoped to the bounds of the tile.
@@ -109,7 +151,8 @@ client.closeModal({
   context: { /* arbitrary context object to pass to parent add-in */ }
 });
 ```
-The parent add-in can listen to the close event via the `modalClosed` promise returned from `showModal`. The promise will resolve when the modal is closed and include the context data returned from the modal:
+
+The parent add-in can listen to the close event via the `modalClosed` Promise returned from `showModal`. The Promise will resolve when the modal is closed, and will include the context data returned from the modal:
 
 ```js
 // Parent add-in launching a modal
@@ -142,7 +185,7 @@ var BBSkyApiAddin = require('@blackbaud/sky-api-addin');
 var client = new BBSkyApiAddin.AddinClient({...});
 ```
 
-If you're using no module loader at all, then you can load the `dist/bundles/sky-api-addin.umd.js` file onto your page and via a `<script>` element or concatenated with the rest of your page's JavaScript and access it via the global `BBSkyApiAddin` variable:
+If you are not using a module loader at all, then you can load the `dist/bundles/sky-api-addin.umd.js` file onto your page via a `<script>` element or concatenated with the rest of your page's JavaScript, and access it via the global `BBSkyApiAddin` variable:
 
 ```js
 // BBSkyApiAddin is global here.
