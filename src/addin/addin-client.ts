@@ -1,6 +1,7 @@
 import { AddinClientArgs } from './client-interfaces/addin-client-args';
 import { AddinClientCloseModalArgs } from './client-interfaces/addin-client-close-modal-args';
 import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
+import { AddinClientOpenHelpArgs } from './client-interfaces/addin-client-open-help-args';
 import { AddinClientReadyArgs } from './client-interfaces/addin-client-ready-args';
 import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
 import { AddinClientShowModalResult } from './client-interfaces/addin-client-show-modal-result';
@@ -166,6 +167,19 @@ export class AddinClient {
     this.postMessageToHostPage({
       message: args,
       messageType: 'close-modal'
+    });
+  }
+
+  /**
+   * Informs the host to open the help tab with the specified help key.
+   * @param args Arguments for launching the help tab.
+   */
+  public openHelp(args: AddinClientOpenHelpArgs) {
+    this.postMessageToHostPage({
+      message: {
+        helpKey: args.helpKey
+      },
+      messageType: 'open-help'
     });
   }
 
