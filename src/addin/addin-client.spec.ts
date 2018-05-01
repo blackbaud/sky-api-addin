@@ -2,6 +2,7 @@ import { AddinClient } from './addin-client';
 import { AddinClientCloseModalArgs } from './client-interfaces/addin-client-close-modal-args';
 import { AddinClientInitArgs } from './client-interfaces/addin-client-init-args';
 import { AddinClientNavigateArgs } from './client-interfaces/addin-client-navigate-args';
+import { AddinClientOpenHelpArgs } from './client-interfaces/addin-client-open-help-args';
 import { AddinClientReadyArgs } from './client-interfaces/addin-client-ready-args';
 import { AddinClientShowModalArgs } from './client-interfaces/addin-client-show-modal-args';
 import { AddinHostMessageEventData } from './host-interfaces/addin-host-message-event-data';
@@ -461,6 +462,41 @@ describe('AddinClient ', () => {
 
         expect(postedMessage.message.url).toBe(args.url);
         expect(postedMessage.messageType).toBe('navigate');
+        expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
+      });
+
+  });
+
+  describe('open-help', () => {
+
+    it('should raise "open-help" event with proper help key.',
+      () => {
+        let postedMessage: any;
+        let postedOrigin: string;
+
+        const client = new AddinClient({
+          callbacks: {
+            init: () => { return; }
+          }
+        });
+
+        initializeHost();
+
+        spyOn(window.parent, 'postMessage').and.callFake((message: any, targetOrigin: string) => {
+          postedMessage = message;
+          postedOrigin = targetOrigin;
+        });
+
+        const args: AddinClientOpenHelpArgs = {
+          helpKey: 'test-help-key.html'
+        };
+
+        client.openHelp(args);
+
+        client.destroy();
+
+        expect(postedMessage.message.helpKey).toBe(args.helpKey);
+        expect(postedMessage.messageType).toBe('open-help');
         expect(postedOrigin).toBe(TEST_HOST_ORIGIN);
       });
 
