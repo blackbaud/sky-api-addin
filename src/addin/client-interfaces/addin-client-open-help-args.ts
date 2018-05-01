@@ -6,6 +6,6 @@ export interface AddinClientOpenHelpArgs {
   /**
    * The name of the help key to be launched.
    */
-  helpKey?: string;
+  helpKey: string;
 
 }

@@ -135,6 +135,15 @@ var client = new AddinClient({...});
 client.navigate({ url: '<target_url>' });
 ```
 
+#### Opening a BB Help tab
+
+The add-in can instruct the parent page to display the Help tab, and specify which page to display. To do this, call the `openHelp` method on the `AddinClient` object. This function takes an object argument with property `helpKey` for the name of the help tab to display. A single .html file should be named.
+
+```js
+var client = new AddinClient({...});
+client.openHelp({ helpKey: '<target_page>.html' });
+```
+
 ## Authentication
 SKY API add-ins support a single-sign-on (SSO) mechanism that can be used to correlate the Blackbaud user with a user in the add-in's native system.
 
